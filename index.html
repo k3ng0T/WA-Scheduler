@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>WA Scheduler</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #080b0f;
+    --bg2:      #0d1117;
+    --bg3:      #111820;
+    --border:   #1c2634;
+    --green:    #25d366;
+    --green2:   #128c7e;
+    --text:     #cdd9e5;
+    --muted:    #4d6075;
+    --faint:    #1c2634;
+    --amber:    #f0a500;
+    --blue:     #4dabf7;
+    --red:      #f05252;
+    --teal:     #2dd4bf;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+  }
+
+  /* ── Header ───────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .logo-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--green), var(--green2));
+    display: grid; place-items: center;
+    font-size: 17px;
+  }
+  .logo-text { font-family: 'Syne', sans-serif; font-size: 17px; letter-spacing: 1px; }
+  .logo-sub  { font-size: 9px; color: var(--muted); letter-spacing: 3px; margin-top: 2px; }
+  #clock {
+    font-size: 11px; color: var(--muted);
+    background: var(--bg3); padding: 6px 14px;
+    border-radius: 6px; border: 1px solid var(--border);
+  }
+
+  /* ── Layout ───────────────────────── */
+  main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
+
+  /* ── Stats ────────────────────────── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 28px; line-height: 1; }
+  .stat-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-top: 4px; }
+
+  /* ── Panel ────────────────────────── */
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title { font-size: 10px; letter-spacing: 3px; color: var(--muted); }
+
+  /* ── Contact rows ─────────────────── */
+  .contacts-list { max-height: 400px; overflow-y: auto; }
+  .contact-row {
+    display: grid;
+    grid-template-columns: 26px 155px 1fr 106px 30px;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 18px;
+    border-bottom: 1px solid #0d1520;
+    transition: background .15s;
+  }
+  .contact-row:hover { background: #0d1520; }
+  .row-index { font-size: 10px; color: var(--faint); text-align: center; }
+
+  input[type="text"], input[type="time"] {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 7px 10px;
+    width: 100%;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  input[type="text"]:focus, input[type="time"]:focus {
+    border-color: rgba(37,211,102,.4);
+    box-shadow: 0 0 0 3px rgba(37,211,102,.06);
+  }
+  input:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Status badge */
+  .badge {
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    border-radius: 6px; padding: 4px 0; font-size: 9px; letter-spacing: 1px;
+    border: 1px solid transparent;
+  }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .badge-pending  { background: rgba(240,165,0,.1);  border-color: rgba(240,165,0,.25);  color: var(--amber); }
+  .badge-pending  .dot { background: var(--amber); }
+  .badge-sending  { background: rgba(77,171,247,.1); border-color: rgba(77,171,247,.25); color: var(--blue); }
+  .badge-sending  .dot { background: var(--blue); animation: pulse 1s infinite; }
+  .badge-sent     { background: rgba(45,212,191,.1); border-color: rgba(45,212,191,.25); color: var(--teal); }
+  .badge-sent     .dot { background: var(--teal); }
+  .badge-failed   { background: rgba(240,82,82,.1);  border-color: rgba(240,82,82,.25);  color: var(--red); }
+  .badge-failed   .dot { background: var(--red); }
+
+  @keyframes pulse {
+    0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(77,171,247,.5); }
+    50%      { opacity:.5; box-shadow: 0 0 0 4px rgba(77,171,247,0); }
+  }
+
+  /* Remove btn */
+  .btn-remove {
+    background: none; border: none;
+    color: var(--faint); cursor: pointer;
+    font-size: 13px; line-height: 1;
+    transition: color .15s;
+  }
+  .btn-remove:hover:not(:disabled) { color: var(--red); }
+  .btn-remove:disabled { cursor: default; }
+
+  /* ── Schedule bar ─────────────────── */
+  .schedule-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 16px;
+    padding: 16px 18px;
+  }
+  .sched-label { font-size: 10px; color: var(--muted); letter-spacing: 3px; flex-shrink: 0; }
+
+  /* Toggle */
+  .toggle-wrap { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .toggle-track {
+    width: 36px; height: 20px; border-radius: 10px;
+    position: relative; transition: background .2s;
+    border: 1px solid var(--border);
+  }
+  .toggle-track.on  { background: var(--green); border-color: var(--green); }
+  .toggle-track.off { background: var(--bg3); }
+  .toggle-thumb {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #fff; position: absolute; top: 2px;
+    transition: left .2s;
+  }
+  .toggle-track.on  .toggle-thumb { left: 18px; }
+  .toggle-track.off .toggle-thumb { left: 2px; }
+  .toggle-label { font-size: 10px; letter-spacing: 1px; }
+
+  .time-group { display: flex; align-items: center; gap: 8px; }
+  .time-group span { font-size: 10px; color: var(--muted); }
+  input[type="time"] { width: 120px; color-scheme: dark; }
+
+  /* Action buttons */
+  .actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px;
+    padding: 8px 18px; border-radius: 7px;
+    cursor: pointer; border: 1px solid transparent;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+  .btn-add {
+    background: rgba(37,211,102,.1);
+    border-color: rgba(37,211,102,.3);
+    color: var(--green);
+  }
+  .btn-dispatch {
+    background: linear-gradient(135deg, var(--green), var(--green2));
+    color: #fff; font-weight: 700;
+    border: none;
+  }
+  .btn-stop {
+    background: rgba(240,82,82,.1);
+    border-color: rgba(240,82,82,.3);
+    color: var(--red);
+  }
+  .btn-reset {
+    background: rgba(77,171,247,.1);
+    border-color: rgba(77,171,247,.3);
+    color: var(--blue);
+  }
+
+  /* ── Log ──────────────────────────── */
+  .log-area {
+    padding: 14px 18px;
+    max-height: 140px; overflow-y: auto;
+    font-size: 10px; line-height: 1.8;
+    color: var(--muted);
+  }
+  .log-line.ok     { color: var(--teal); }
+  .log-line.err    { color: var(--red); }
+  .log-line.info   { color: var(--blue); }
+  .log-line.dim    { color: var(--muted); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  footer {
+    text-align: center; margin-top: 24px;
+    font-size: 9px; color: var(--faint); letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">💬</div>
+    <div>
+      <div class="logo-text">WA Scheduler</div>
+      <div class="logo-sub">BULK MESSAGE DISPATCHER</div>
+    </div>
+  </div>
+  <div id="clock">--:--:--</div>
+</header>
+
+<main>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-total" style="color:var(--text)">0</div>
+      <div class="stat-label">CONTACTS</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-ready" style="color:var(--green)">0</div>
+      <div class="stat-label">READY</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-sent" style="color:var(--teal)">0</div>
+      <div class="stat-label">SENT</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-failed" style="color:var(--red)">0</div>
+      <div class="stat-label">FAILED</div>
+    </div>
+  </div>
+
+  <!-- Contacts -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title" id="contacts-title">CONTACTS — 0 TOTAL</span>
+      <button class="btn btn-add" onclick="addContact()">+ ADD</button>
+    </div>
+    <div class="contacts-list" id="contacts-list"></div>
+  </div>
+
+  <!-- Schedule -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title">SCHEDULE</span>
+    </div>
+    <div class="schedule-bar">
+      <span class="sched-label">TIME</span>
+
+      <div class="toggle-wrap" onclick="toggleSendNow()">
+        <div class="toggle-track off" id="toggle-track">
+          <div class="toggle-thumb"></div>
+        </div>
+        <span class="toggle-label" id="toggle-label" style="color:var(--muted)">SEND IMMEDIATELY</span>
+      </div>
+
+      <div class="time-group" id="time-group">
+        <span>AT</span>
+        <input type="time" id="send-time" />
+        <span style="font-size:9px;color:var(--faint)">24H</span>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-stop"  id="btn-stop"  onclick="stopDispatch()"  style="display:none">■ STOP</button>
+        <button class="btn btn-reset" id="btn-reset" onclick="resetAll()"      style="display:none">↺ RESET</button>
+        <button class="btn btn-dispatch" id="btn-dispatch" onclick="dispatch()">▶ DISPATCH</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title">LOG</span>
+      <button class="btn btn-add" style="font-size:9px;padding:4px 10px" onclick="clearLog()">CLEAR</button>
+    </div>
+    <div class="log-area" id="log"></div>
+  </div>
+
+  <footer>FLASK BACKEND · PYWHATKIT · REAL SEND MODE</footer>
+</main>
+
+<script>
+// ── State ──────────────────────────────────────────────
+let contacts = [];
+let nextId = 1;
+let running = false;
+let sendNow = false;
+let pollTimer = null;
+
+// ── Init ───────────────────────────────────────────────
+addContact();
+updateStats();
+tickClock();
+setInterval(tickClock, 1000);
+
+// ── Clock ──────────────────────────────────────────────
+function tickClock() {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// ── Toggle send-now ────────────────────────────────────
+function toggleSendNow() {
+  if (running) return;
+  sendNow = !sendNow;
+  const track = document.getElementById('toggle-track');
+  const label = document.getElementById('toggle-label');
+  const tg    = document.getElementById('time-group');
+  track.className = 'toggle-track ' + (sendNow ? 'on' : 'off');
+  label.style.color = sendNow ? 'var(--green)' : 'var(--muted)';
+  tg.style.display  = sendNow ? 'none' : 'flex';
+}
+
+// ── Contacts ───────────────────────────────────────────
+function addContact() {
+  contacts.push({ id: nextId++, phone: '', message: '', status: 'pending' });
+  renderContacts();
+  updateStats();
+}
+
+function removeContact(id) {
+  if (contacts.length === 1) return;
+  contacts = contacts.filter(c => c.id !== id);
+  renderContacts();
+  updateStats();
+}
+
+function renderContacts() {
+  const list = document.getElementById('contacts-list');
+  list.innerHTML = contacts.map((c, i) => `
+    <div class="contact-row" id="row-${c.id}">
+      <div class="row-index">${String(i+1).padStart(2,'0')}</div>
+      <input type="text"
+        value="${escHtml(c.phone)}"
+        placeholder="+1234567890"
+        ${running ? 'disabled' : ''}
+        oninput="updateField(${c.id},'phone',this.value)"
+      />
+      <input type="text"
+        value="${escHtml(c.message)}"
+        placeholder="Message..."
+        ${running ? 'disabled' : ''}
+        oninput="updateField(${c.id},'message',this.value)"
+      />
+      ${badgeHtml(c.status)}
+      <button class="btn-remove" onclick="removeContact(${c.id})"
+        ${running || contacts.length===1 ? 'disabled' : ''}>✕</button>
+    </div>
+  `).join('');
+  document.getElementById('contacts-title').textContent =
+    `CONTACTS — ${contacts.length} TOTAL`;
+}
+
+function badgeHtml(status) {
+  const map = {
+    pending: ['PENDING','pending'],
+    sending: ['SENDING','sending'],
+    sent:    ['SENT','sent'],
+    failed:  ['FAILED','failed'],
+  };
+  const [label, cls] = map[status] || map.pending;
+  return `<div class="badge badge-${cls}"><div class="dot"></div>${label}</div>`;
+}
+
+function updateField(id, field, value) {
+  const c = contacts.find(x => x.id === id);
+  if (c) c[field] = value;
+  updateStats();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+// ── Stats ──────────────────────────────────────────────
+function updateStats() {
+  const valid  = contacts.filter(c => c.phone.trim() && c.message.trim()).length;
+  const sent   = contacts.filter(c => c.status === 'sent').length;
+  const failed = contacts.filter(c => c.status === 'failed').length;
+  document.getElementById('stat-total').textContent  = contacts.length;
+  document.getElementById('stat-ready').textContent  = valid;
+  document.getElementById('stat-sent').textContent   = sent;
+  document.getElementById('stat-failed').textContent = failed;
+
+  const btn = document.getElementById('btn-dispatch');
+  btn.disabled = running || valid === 0;
+  btn.textContent = running ? 'DISPATCHING...' : `▶ DISPATCH ${valid}`;
+}
+
+// ── Log ────────────────────────────────────────────────
+function log(msg, cls='dim') {
+  const el = document.getElementById('log');
+  const ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  el.innerHTML += `<div class="log-line ${cls}">[${ts}] ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog() { document.getElementById('log').innerHTML = ''; }
+
+// ── Dispatch ───────────────────────────────────────────
+async function dispatch() {
+  const valid = contacts.filter(c => c.phone.trim() && c.message.trim());
+  if (!valid.length) return;
+
+  running = true;
+  updateStats();
+  document.getElementById('btn-stop').style.display  = '';
+  document.getElementById('btn-reset').style.display = 'none';
+
+  // reset statuses
+  contacts.forEach(c => { if (c.phone.trim() && c.message.trim()) c.status = 'pending'; });
+  renderContacts();
+
+  const timeVal = document.getElementById('send-time').value;
+
+  log(`Dispatching ${valid.length} message(s)…`, 'info');
+  if (!sendNow && timeVal) log(`Scheduled for ${timeVal}`, 'info');
+
+  try {
+    const res = await fetch('/dispatch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contacts: valid.map(c => ({ id: c.id, phone: c.phone, message: c.message })),
+        sendNow,
+        time: timeVal,
+      }),
+    });
+    const data = await res.json();
+    if (data.error) { log('Error: ' + data.error, 'err'); running = false; updateStats(); return; }
+    log(`Job started — ${data.total} contacts queued`, 'ok');
+    startPolling();
+  } catch(e) {
+    log('Cannot reach Flask server: ' + e.message, 'err');
+    running = false;
+    updateStats();
+  }
+}
+
+// ── Polling ────────────────────────────────────────────
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollStatus, 1500);
+}
+
+async function pollStatus() {
+  try {
+    const res  = await fetch('/status');
+    const jobs = await res.json();
+
+    jobs.forEach(job => {
+      const c = contacts.find(x => x.id === job.id);
+      if (!c) return;
+      if (c.status !== job.status) {
+        c.status = job.status;
+        const row = document.getElementById('row-' + c.id);
+        if (row) {
+          row.querySelector('.badge').outerHTML = badgeHtml(job.status);
+          // re-query after replacement
+          const newBadge = row.children[3];
+          // DOM already updated via outerHTML
+        }
+        if (job.status === 'sent')
+          log(`✓ Sent to ${c.phone}`, 'ok');
+        if (job.status === 'failed')
+          log(`✗ Failed ${c.phone}: ${job.error || 'unknown error'}`, 'err');
+        if (job.status === 'sending')
+          log(`→ Sending to ${c.phone}…`, 'info');
+      }
+    });
+
+    const allDone = jobs.length > 0 && jobs.every(j => j.status === 'sent' || j.status === 'failed');
+    if (allDone) {
+      clearInterval(pollTimer);
+      running = false;
+      document.getElementById('btn-stop').style.display  = 'none';
+      document.getElementById('btn-reset').style.display = '';
+      renderContacts();
+      updateStats();
+      const s = jobs.filter(j=>j.status==='sent').length;
+      const f = jobs.filter(j=>j.status==='failed').length;
+      log(`Done — ${s} sent, ${f} failed`, s > 0 ? 'ok' : 'err');
+    }
+  } catch(e) {
+    log('Poll error: ' + e.message, 'err');
+  }
+}
+
+// ── Stop / Reset ───────────────────────────────────────
+async function stopDispatch() {
+  clearInterval(pollTimer);
+  running = false;
+  document.getElementById('btn-stop').style.display  = 'none';
+  document.getElementById('btn-reset').style.display = '';
+  log('Stopped by user', 'err');
+  updateStats();
+}
+
+async function resetAll() {
+  await fetch('/reset', { method: 'POST' });
+  contacts.forEach(c => c.status = 'pending');
+  document.getElementById('btn-reset').style.display = 'none';
+  renderContacts();
+  updateStats();
+  log('Reset — ready for new dispatch', 'info');
+}
+</script>
+</body>
+</html>
