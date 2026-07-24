@@ -4,25 +4,26 @@ import pywhatkit
 import time
 from datetime import datetime
 import os
+import webbrowser
 
 app = Flask(__name__)
 
-# Global job state
-jobs = {}       # id -> { phone, message, status, error }
+jobs = {}
 job_lock = threading.Lock()
+stop_event = threading.Event()
 
 
 def send_messages(contacts, send_time_str, send_now):
-    """Run in background thread. Waits for time then sends each message."""
-
-    # Wait until scheduled time
     if not send_now:
-        while True:
+        while not stop_event.is_set():
             if datetime.now().strftime("%H:%M") == send_time_str:
                 break
-            time.sleep(10)
+            time.sleep(1)
 
     for c in contacts:
+        if stop_event.is_set():
+            break
+
         cid = c["id"]
         with job_lock:
             jobs[cid]["status"] = "sending"
@@ -41,7 +42,13 @@ def send_messages(contacts, send_time_str, send_now):
                 jobs[cid]["status"] = "failed"
                 jobs[cid]["error"] = str(e)
 
-        time.sleep(5)   # small gap between messages
+        time.sleep(3)
+
+    with job_lock:
+        for jid in jobs:
+            if jobs[jid]["status"] == "sending":
+                jobs[jid]["status"] = "failed"
+                jobs[jid]["error"] = "Stopped by user"
 
 
 @app.route("/")
@@ -57,7 +64,9 @@ def dispatch():
     send_time = data.get("time", "")
 
     if not contacts:
-        return jsonify({"error": "No contacts"}), 400
+        return jsonify({"error": "No contacts provided"}), 400
+
+    stop_event.clear()
 
     with job_lock:
         jobs.clear()
@@ -88,11 +97,28 @@ def status():
 
 @app.route("/reset", methods=["POST"])
 def reset():
+    stop_event.set()
     with job_lock:
         jobs.clear()
     return jsonify({"ok": True})
 
 
+@app.route("/stop", methods=["POST"])
+def stop():
+    stop_event.set()
+    return jsonify({"ok": True})
+
+
 if __name__ == "__main__":
-    print("\n  WA Scheduler running → http://localhost:5000\n")
-    app.run(debug=False, port=5000)
+    port = 5000
+    url = f"http://localhost:{port}"
+    print(f"\n  SendFlow running -> {url}\n")
+
+    def open_browser():
+        time.sleep(1)
+        webbrowser.open("https://web.whatsapp.com")
+        time.sleep(1)
+        webbrowser.open(url)
+
+    threading.Timer(0, open_browser).start()
+    app.run(debug=False, port=port)

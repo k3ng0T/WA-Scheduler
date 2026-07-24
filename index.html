@@ -1,556 +1,511 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru" data-theme="dark">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WA Scheduler</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SendFlow</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
-  :root {
-    --bg:       #080b0f;
-    --bg2:      #0d1117;
-    --bg3:      #111820;
-    --border:   #1c2634;
-    --green:    #25d366;
-    --green2:   #128c7e;
-    --text:     #cdd9e5;
-    --muted:    #4d6075;
-    --faint:    #1c2634;
-    --amber:    #f0a500;
-    --blue:     #4dabf7;
-    --red:      #f05252;
-    --teal:     #2dd4bf;
-  }
+/* ── Theme Variables ───────────────── */
+html[data-theme="dark"]{
+  --bg:#09090b;--surface:#18181b;--surface2:#1f1f23;--surface3:#27272a;
+  --border:#27272a;--border-h:#3f3f46;
+  --text:#fafafa;--text2:#a1a1aa;--muted:#52525b;
+  --header-bg:rgba(9,9,9,.85);
+  --toast-shadow:0 8px 24px rgba(0,0,0,.4);
+  --input-bg:#09090b;
+  --mesh-opacity:.5;
+  --mesh-blur:80px;
+  --grid-color:rgba(255,255,255,.03);
+  --glow-green:rgba(34,197,94,.08);
+  --glow-blue:rgba(59,130,246,.06);
+  --toggle-knob:#ffffff;
+  --btn-green-1:#22c55e;
+  --btn-green-2:#16a34a;
+}
+html[data-theme="light"]{
+  --bg:#f4f4f5;--surface:#fff;--surface2:#fafafa;--surface3:#e4e4e7;
+  --border:#e4e4e7;--border-h:#d4d4d8;
+  --text:#18181b;--text2:#52525b;--muted:#a1a1aa;
+  --header-bg:rgba(244,244,245,.85);
+  --toast-shadow:0 8px 24px rgba(0,0,0,.1);
+  --input-bg:#fff;
+  --mesh-opacity:.35;
+  --mesh-blur:100px;
+  --grid-color:rgba(0,0,0,.03);
+  --glow-green:rgba(34,197,94,.06);
+  --glow-blue:rgba(59,130,246,.04);
+  --toggle-knob:#18181b;
+  --btn-green-1:#059669;
+  --btn-green-2:#047857;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;overflow-x:hidden;transition:background .4s,color .4s}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    min-height: 100vh;
-  }
+/* ── Animated Background ───────────── */
+.bg-layer{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg-grid{position:absolute;inset:0;background-image:linear-gradient(var(--grid-color) 1px,transparent 1px),linear-gradient(90deg,var(--grid-color) 1px,transparent 1px);background-size:60px 60px;opacity:.6}
+.bg-orb{position:absolute;border-radius:50%;filter:blur(var(--mesh-blur));opacity:var(--mesh-opacity);animation:orbFloat 20s ease-in-out infinite}
+.bg-orb-1{width:500px;height:500px;background:var(--glow-green);top:-10%;left:-5%;animation-delay:0s}
+.bg-orb-2{width:400px;height:400px;background:var(--glow-blue);bottom:-10%;right:-5%;animation-delay:-7s}
+.bg-orb-3{width:300px;height:300px;background:rgba(20,184,166,.05);top:40%;left:50%;animation-delay:-14s}
+@keyframes orbFloat{
+  0%,100%{transform:translate(0,0) scale(1)}
+  25%{transform:translate(60px,-40px) scale(1.1)}
+  50%{transform:translate(-30px,60px) scale(.9)}
+  75%{transform:translate(40px,20px) scale(1.05)}
+}
+.bg-noise{position:absolute;inset:0;opacity:.015;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 
-  /* ── Header ───────────────────────── */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 32px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg2);
-    position: sticky; top: 0; z-index: 10;
-  }
-  .logo {
-    display: flex; align-items: center; gap: 12px;
-  }
-  .logo-icon {
-    width: 34px; height: 34px; border-radius: 8px;
-    background: linear-gradient(135deg, var(--green), var(--green2));
-    display: grid; place-items: center;
-    font-size: 17px;
-  }
-  .logo-text { font-family: 'Syne', sans-serif; font-size: 17px; letter-spacing: 1px; }
-  .logo-sub  { font-size: 9px; color: var(--muted); letter-spacing: 3px; margin-top: 2px; }
-  #clock {
-    font-size: 11px; color: var(--muted);
-    background: var(--bg3); padding: 6px 14px;
-    border-radius: 6px; border: 1px solid var(--border);
-  }
+/* ── Content wrapper ───────────────── */
+.content{position:relative;z-index:1}
 
-  /* ── Layout ───────────────────────── */
-  main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
+/* ── Toast ─────────────────────────── */
+#toast{position:fixed;top:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 18px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;animation:slideIn .3s ease;pointer-events:auto;box-shadow:var(--toast-shadow);backdrop-filter:blur(12px)}
+.toast-item.ok{border-color:rgba(34,197,94,.35)}
+.toast-item.err{border-color:rgba(239,68,68,.35)}
+.toast-item.info{border-color:rgba(59,130,246,.35)}
+@keyframes slideIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
 
-  /* ── Stats ────────────────────────── */
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-bottom: 22px;
-  }
-  .stat-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px;
-    text-align: center;
-  }
-  .stat-value { font-family: 'Syne', sans-serif; font-size: 28px; line-height: 1; }
-  .stat-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-top: 4px; }
+/* ── Header ────────────────────────── */
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--header-bg);backdrop-filter:blur(16px);position:sticky;top:0;z-index:10;transition:background .4s}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-mark{width:36px;height:36px;border-radius:10px;background:#09090b;display:grid;place-items:center;box-shadow:0 0 20px rgba(34,197,94,.25)}
+.logo-mark svg{width:20px;height:20px;stroke:#fff}
+.logo-name{font-weight:800;font-size:18px;letter-spacing:-.5px}
+.logo-tag{font-size:10px;color:var(--muted);letter-spacing:2px;margin-top:1px}
+.header-right{display:flex;align-items:center;gap:12px}
+#clock{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 
-  /* ── Panel ────────────────────────── */
-  .panel {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 16px;
-  }
-  .panel-head {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 13px 18px;
-    border-bottom: 1px solid var(--border);
-  }
-  .panel-title { font-size: 10px; letter-spacing: 3px; color: var(--muted); }
+/* theme/lang toggle */
+.hdr-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--text2);font-family:inherit;transition:all .2s}
+.hdr-btn:hover{border-color:var(--border-h);color:var(--text)}
+.hdr-btn svg{width:16px;height:16px;flex-shrink:0}
 
-  /* ── Contact rows ─────────────────── */
-  .contacts-list { max-height: 400px; overflow-y: auto; }
-  .contact-row {
-    display: grid;
-    grid-template-columns: 26px 155px 1fr 106px 30px;
-    gap: 8px;
-    align-items: center;
-    padding: 10px 18px;
-    border-bottom: 1px solid #0d1520;
-    transition: background .15s;
-  }
-  .contact-row:hover { background: #0d1520; }
-  .row-index { font-size: 10px; color: var(--faint); text-align: center; }
+/* ── Layout ────────────────────────── */
+main{max-width:920px;margin:0 auto;padding:24px 20px 60px}
 
-  input[type="text"], input[type="time"] {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    padding: 7px 10px;
-    width: 100%;
-    outline: none;
-    transition: border-color .2s, box-shadow .2s;
-  }
-  input[type="text"]:focus, input[type="time"]:focus {
-    border-color: rgba(37,211,102,.4);
-    box-shadow: 0 0 0 3px rgba(37,211,102,.06);
-  }
-  input:disabled { opacity: .4; cursor: not-allowed; }
+/* ── Stats ─────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius,10px);padding:16px;text-align:center;transition:border-color .25s,background .4s}
+.stat:hover{border-color:var(--border-h)}
+.stat-n{font-size:32px;font-weight:800;line-height:1}
+.stat-l{font-size:10px;color:var(--muted);letter-spacing:2px;margin-top:6px;text-transform:uppercase}
 
-  /* Status badge */
-  .badge {
-    display: flex; align-items: center; justify-content: center; gap: 5px;
-    border-radius: 6px; padding: 4px 0; font-size: 9px; letter-spacing: 1px;
-    border: 1px solid transparent;
-  }
-  .dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .badge-pending  { background: rgba(240,165,0,.1);  border-color: rgba(240,165,0,.25);  color: var(--amber); }
-  .badge-pending  .dot { background: var(--amber); }
-  .badge-sending  { background: rgba(77,171,247,.1); border-color: rgba(77,171,247,.25); color: var(--blue); }
-  .badge-sending  .dot { background: var(--blue); animation: pulse 1s infinite; }
-  .badge-sent     { background: rgba(45,212,191,.1); border-color: rgba(45,212,191,.25); color: var(--teal); }
-  .badge-sent     .dot { background: var(--teal); }
-  .badge-failed   { background: rgba(240,82,82,.1);  border-color: rgba(240,82,82,.25);  color: var(--red); }
-  .badge-failed   .dot { background: var(--red); }
+/* ── Panel ─────────────────────────── */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius,10px);margin-bottom:12px;overflow:hidden;transition:background .4s}
+.panel-top{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border)}
+.panel-label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
 
-  @keyframes pulse {
-    0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(77,171,247,.5); }
-    50%      { opacity:.5; box-shadow: 0 0 0 4px rgba(77,171,247,0); }
-  }
+/* ── Buttons ───────────────────────── */
+.btn{font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.5px;padding:7px 16px;border-radius:7px;cursor:pointer;border:1px solid transparent;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.3;cursor:not-allowed;transform:none}
+.btn-green{background:linear-gradient(135deg,var(--btn-green-1),var(--btn-green-2));color:#fff;border:none;box-shadow:0 0 16px rgba(34,197,94,.15)}
+.btn-green:hover:not(:disabled){box-shadow:0 0 24px rgba(34,197,94,.3)}
+.btn-ghost{background:var(--surface2);color:var(--text2);border-color:var(--border)}
+.btn-ghost:hover:not(:disabled){border-color:var(--border-h);color:var(--text)}
+.btn-red{background:rgba(239,68,68,.1);color:var(--red);border-color:rgba(239,68,68,.2)}
+.btn-red:hover:not(:disabled){background:rgba(239,68,68,.15)}
+.btn-blue{background:rgba(59,130,246,.1);color:var(--blue);border-color:rgba(59,130,246,.2)}
+.btn-blue:hover:not(:disabled){background:rgba(59,130,246,.15)}
 
-  /* Remove btn */
-  .btn-remove {
-    background: none; border: none;
-    color: var(--faint); cursor: pointer;
-    font-size: 13px; line-height: 1;
-    transition: color .15s;
-  }
-  .btn-remove:hover:not(:disabled) { color: var(--red); }
-  .btn-remove:disabled { cursor: default; }
+/* ── Contacts ──────────────────────── */
+.contact-list{max-height:380px;overflow-y:auto}
+.contact-row{display:grid;grid-template-columns:32px 160px 1fr 100px 32px;gap:8px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--border);transition:background .15s}
+.contact-row:hover{background:var(--surface2)}
+.contact-idx{font-size:11px;color:var(--muted);text-align:center;font-weight:500}
+.inp{background:var(--input-bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:inherit;font-size:12px;padding:8px 11px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s,background .4s}
+.inp:focus{border-color:rgba(34,197,94,.4);box-shadow:0 0 0 3px rgba(34,197,94,.08)}
+.inp:disabled{opacity:.35;cursor:not-allowed}
+.inp::placeholder{color:var(--muted)}
 
-  /* ── Schedule bar ─────────────────── */
-  .schedule-bar {
-    display: flex; align-items: center; flex-wrap: wrap; gap: 16px;
-    padding: 16px 18px;
-  }
-  .sched-label { font-size: 10px; color: var(--muted); letter-spacing: 3px; flex-shrink: 0; }
+/* badge */
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:600;letter-spacing:.5px;border:1px solid transparent;white-space:nowrap}
+.badge-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;box-shadow:0 0 4px currentColor}
+.badge-pending{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.2);color:var(--amber)}
+.badge-pending .badge-dot{background:var(--amber)}
+.badge-sending{background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.2);color:var(--blue)}
+.badge-sending .badge-dot{background:var(--blue);animation:pulse 1s infinite}
+.badge-sent{background:rgba(20,184,166,.08);border-color:rgba(20,184,166,.2);color:var(--teal)}
+.badge-sent .badge-dot{background:var(--teal)}
+.badge-failed{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2);color:var(--red)}
+.badge-failed .badge-dot{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-  /* Toggle */
-  .toggle-wrap { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
-  .toggle-track {
-    width: 36px; height: 20px; border-radius: 10px;
-    position: relative; transition: background .2s;
-    border: 1px solid var(--border);
-  }
-  .toggle-track.on  { background: var(--green); border-color: var(--green); }
-  .toggle-track.off { background: var(--bg3); }
-  .toggle-thumb {
-    width: 14px; height: 14px; border-radius: 50%;
-    background: #fff; position: absolute; top: 2px;
-    transition: left .2s;
-  }
-  .toggle-track.on  .toggle-thumb { left: 18px; }
-  .toggle-track.off .toggle-thumb { left: 2px; }
-  .toggle-label { font-size: 10px; letter-spacing: 1px; }
+.btn-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:4px;transition:color .15s;border-radius:4px}
+.btn-x:hover:not(:disabled){color:var(--red);background:rgba(239,68,68,.1)}
+.btn-x:disabled{cursor:default;opacity:.2}
 
-  .time-group { display: flex; align-items: center; gap: 8px; }
-  .time-group span { font-size: 10px; color: var(--muted); }
-  input[type="time"] { width: 120px; color-scheme: dark; }
+/* ── Schedule ──────────────────────── */
+.sched{display:flex;align-items:center;flex-wrap:wrap;gap:16px;padding:14px 18px}
+.toggle{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.toggle-track{width:40px;height:22px;border-radius:11px;background:var(--input-bg);border:1px solid var(--border);position:relative;transition:all .25s}
+.toggle-track.on{background:var(--green);border-color:var(--green)}
+.toggle-knob{width:16px;height:16px;border-radius:50%;background:var(--toggle-knob);position:absolute;top:2px;left:2px;transition:left .25s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.toggle-track.on .toggle-knob{left:20px}
+.toggle-text{font-size:11px;font-weight:500;color:var(--muted);transition:color .2s}
+.toggle-text.on{color:var(--green)}
 
-  /* Action buttons */
-  .actions { margin-left: auto; display: flex; gap: 8px; }
-  .btn {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; letter-spacing: 1.5px;
-    padding: 8px 18px; border-radius: 7px;
-    cursor: pointer; border: 1px solid transparent;
-    transition: opacity .15s, transform .1s;
-  }
-  .btn:active { transform: scale(.97); }
-  .btn:disabled { opacity: .35; cursor: not-allowed; }
-  .btn-add {
-    background: rgba(37,211,102,.1);
-    border-color: rgba(37,211,102,.3);
-    color: var(--green);
-  }
-  .btn-dispatch {
-    background: linear-gradient(135deg, var(--green), var(--green2));
-    color: #fff; font-weight: 700;
-    border: none;
-  }
-  .btn-stop {
-    background: rgba(240,82,82,.1);
-    border-color: rgba(240,82,82,.3);
-    color: var(--red);
-  }
-  .btn-reset {
-    background: rgba(77,171,247,.1);
-    border-color: rgba(77,171,247,.3);
-    color: var(--blue);
-  }
+.time-input{display:flex;align-items:center;gap:8px}
+.time-input span{font-size:11px;color:var(--muted);font-weight:500}
+input[type="time"]{background:var(--input-bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:inherit;font-size:12px;padding:7px 10px;width:120px;outline:none;color-scheme:dark;transition:border-color .2s,background .4s}
+input[type="time"]:focus{border-color:rgba(34,197,94,.4)}
 
-  /* ── Log ──────────────────────────── */
-  .log-area {
-    padding: 14px 18px;
-    max-height: 140px; overflow-y: auto;
-    font-size: 10px; line-height: 1.8;
-    color: var(--muted);
-  }
-  .log-line.ok     { color: var(--teal); }
-  .log-line.err    { color: var(--red); }
-  .log-line.info   { color: var(--blue); }
-  .log-line.dim    { color: var(--muted); }
+.sched-actions{margin-left:auto;display:flex;gap:8px}
 
-  /* scrollbar */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+/* ── Log ───────────────────────────── */
+.log{padding:14px 18px;max-height:150px;overflow-y:auto;font-size:11px;line-height:2;color:var(--muted);font-variant-numeric:tabular-nums}
+.log-ok{color:var(--teal)}
+.log-err{color:var(--red)}
+.log-info{color:var(--blue)}
 
-  footer {
-    text-align: center; margin-top: 24px;
-    font-size: 9px; color: var(--faint); letter-spacing: 2px;
-  }
+/* ── Scrollbar ─────────────────────── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:12px}
+footer{text-align:center;margin-top:32px;font-size:10px;color:var(--border);letter-spacing:2px}
+
+@media(max-width:700px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .contact-row{grid-template-columns:28px 1fr 80px 28px;gap:6px}
+  .contact-row input:first-of-type{grid-column:2/4}
+  .sched{flex-direction:column;align-items:flex-start}
+  .sched-actions{margin-left:0;width:100%}
+  .sched-actions .btn{flex:1;justify-content:center}
+  .header-right{gap:6px}
+}
 </style>
 </head>
 <body>
 
+<div class="bg-layer">
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+  <div class="bg-noise"></div>
+</div>
+
+<div class="content">
+<div id="toast"></div>
+
 <header>
   <div class="logo">
-    <div class="logo-icon">💬</div>
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+    </div>
     <div>
-      <div class="logo-text">WA Scheduler</div>
-      <div class="logo-sub">BULK MESSAGE DISPATCHER</div>
+      <div class="logo-name">SendFlow</div>
+      <div class="logo-tag" data-i18n="header_tag">WHATSAPP DISPATCHER</div>
     </div>
   </div>
-  <div id="clock">--:--:--</div>
+  <div class="header-right">
+    <button class="hdr-btn" id="btn-lang" onclick="toggleLang()" title="Language">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+      <span id="lang-label">RU</span>
+    </button>
+    <button class="hdr-btn" id="btn-theme" onclick="toggleTheme()" title="Theme">
+      <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <div id="clock">--:--:--</div>
+  </div>
 </header>
 
 <main>
-
-  <!-- Stats -->
   <div class="stats">
-    <div class="stat-card">
-      <div class="stat-value" id="stat-total" style="color:var(--text)">0</div>
-      <div class="stat-label">CONTACTS</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-ready" style="color:var(--green)">0</div>
-      <div class="stat-label">READY</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-sent" style="color:var(--teal)">0</div>
-      <div class="stat-label">SENT</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-failed" style="color:var(--red)">0</div>
-      <div class="stat-label">FAILED</div>
-    </div>
+    <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l" data-i18n="stat_total">КОНТАКТЫ</div></div>
+    <div class="stat"><div class="stat-n" id="s-ready" style="color:var(--green)">0</div><div class="stat-l" data-i18n="stat_ready">ГОТОВО</div></div>
+    <div class="stat"><div class="stat-n" id="s-sent" style="color:var(--teal)">0</div><div class="stat-l" data-i18n="stat_sent">ОТПРАВЛЕНО</div></div>
+    <div class="stat"><div class="stat-n" id="s-fail" style="color:var(--red)">0</div><div class="stat-l" data-i18n="stat_failed">ОШИБКИ</div></div>
   </div>
 
-  <!-- Contacts -->
   <div class="panel">
-    <div class="panel-head">
-      <span class="panel-title" id="contacts-title">CONTACTS — 0 TOTAL</span>
-      <button class="btn btn-add" onclick="addContact()">+ ADD</button>
+    <div class="panel-top">
+      <span class="panel-label" id="ct-title"><span data-i18n="contacts_title">КОНТАКТЫ</span> — 0</span>
+      <button class="btn btn-ghost" onclick="addContact()" data-i18n="btn_add">+ Добавить</button>
     </div>
-    <div class="contacts-list" id="contacts-list"></div>
+    <div class="contact-list" id="c-list"></div>
   </div>
 
-  <!-- Schedule -->
   <div class="panel">
-    <div class="panel-head">
-      <span class="panel-title">SCHEDULE</span>
+    <div class="panel-top">
+      <span class="panel-label" data-i18n="schedule_title">РАСПИСАНИЕ</span>
     </div>
-    <div class="schedule-bar">
-      <span class="sched-label">TIME</span>
-
-      <div class="toggle-wrap" onclick="toggleSendNow()">
-        <div class="toggle-track off" id="toggle-track">
-          <div class="toggle-thumb"></div>
-        </div>
-        <span class="toggle-label" id="toggle-label" style="color:var(--muted)">SEND IMMEDIATELY</span>
+    <div class="sched">
+      <div class="toggle" onclick="toggleNow()">
+        <div class="toggle-track" id="t-track"><div class="toggle-knob"></div></div>
+        <span class="toggle-text" id="t-label" data-i18n="send_now">Отправить сейчас</span>
       </div>
-
-      <div class="time-group" id="time-group">
-        <span>AT</span>
-        <input type="time" id="send-time" />
-        <span style="font-size:9px;color:var(--faint)">24H</span>
+      <div class="time-input" id="t-group">
+        <span data-i18n="at_time">В</span>
+        <input type="time" id="send-time"/>
+        <span style="font-size:9px;color:var(--muted);opacity:.6">24H</span>
       </div>
-
-      <div class="actions">
-        <button class="btn btn-stop"  id="btn-stop"  onclick="stopDispatch()"  style="display:none">■ STOP</button>
-        <button class="btn btn-reset" id="btn-reset" onclick="resetAll()"      style="display:none">↺ RESET</button>
-        <button class="btn btn-dispatch" id="btn-dispatch" onclick="dispatch()">▶ DISPATCH</button>
+      <div class="sched-actions">
+        <button class="btn btn-red" id="b-stop" onclick="stopJob()" style="display:none" data-i18n="btn_stop">Стоп</button>
+        <button class="btn btn-blue" id="b-reset" onclick="resetJob()" style="display:none" data-i18n="btn_reset">Сброс</button>
+        <button class="btn btn-green" id="b-dispatch" onclick="dispatch()" data-i18n="btn_dispatch">Отправить</button>
       </div>
     </div>
   </div>
 
-  <!-- Log -->
   <div class="panel">
-    <div class="panel-head">
-      <span class="panel-title">LOG</span>
-      <button class="btn btn-add" style="font-size:9px;padding:4px 10px" onclick="clearLog()">CLEAR</button>
+    <div class="panel-top">
+      <span class="panel-label" data-i18n="log_title">ЛОГ</span>
+      <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="clearLog()" data-i18n="btn_clear">Очистить</button>
     </div>
-    <div class="log-area" id="log"></div>
+    <div class="log" id="log"></div>
   </div>
 
-  <footer>FLASK BACKEND · PYWHATKIT · REAL SEND MODE</footer>
+  <footer>SendFlow · Flask + PyWhatKit</footer>
 </main>
+</div>
 
 <script>
-// ── State ──────────────────────────────────────────────
-let contacts = [];
-let nextId = 1;
-let running = false;
-let sendNow = false;
-let pollTimer = null;
+/* ── i18n ──────────────────────────────────────────── */
+const I18N={
+  ru:{
+    header_tag:'WHATSAPP DISPATCHER',
+    stat_total:'КОНТАКТЫ',stat_ready:'ГОТОВО',stat_sent:'ОТПРАВЛЕНО',stat_failed:'ОШИБКИ',
+    contacts_title:'КОНТАКТЫ',btn_add:'+ Добавить',
+    schedule_title:'РАСПИСАНИЕ',send_now:'Отправить сейчас',at_time:'В',
+    btn_stop:'Стоп',btn_reset:'Сброс',btn_dispatch:'Отправить',
+    log_title:'ЛОГ',btn_clear:'Очистить',
+    placeholder_phone:'+79991234567',placeholder_msg:'Текст сообщения...',
+    dispatching:'Отправка %d сообщений...','scheduled_for':'Запланировано на %s',
+    job_started:'Задача запущена — %d контактов в очереди',error_prefix:'Ошибка: ',
+    server_unreachable:'Сервер недоступен',sending_to:'Отправка %s...',
+    sent_to:'Отправлено %s',failed_at:'Ошибка %s: %s',
+    done:'Готово — %d отправлено, %d ошибок',stopped:'Остановлено',
+    reset_msg:'Сброшено — готово',stopped_by_user:'Остановлено пользователем',
+    toast_queued:'%d сообщений в очереди',toast_sent:'Отправлено: %s',
+    toast_failed:'Ошибка: %s',toast_complete:'Готово: %d отправлено, %d ошибок',
+    toast_stopped:'Остановлено',toast_reset:'Сброшено',toast_server:'Сервер недоступен',
+    empty:'Пока нет контактов',dispatch_n:'Отправить (%d)',sending_state:'Отправка...',
+    badge_pending:'Ожидание',badge_sending:'Отправка',badge_sent:'Отправлено',badge_failed:'Ошибка'
+  },
+  en:{
+    header_tag:'WHATSAPP DISPATCHER',
+    stat_total:'CONTACTS',stat_ready:'READY',stat_sent:'SENT',stat_failed:'FAILED',
+    contacts_title:'CONTACTS',btn_add:'+ Add',
+    schedule_title:'SCHEDULE',send_now:'Send now',at_time:'At',
+    btn_stop:'Stop',btn_reset:'Reset',btn_dispatch:'Dispatch',
+    log_title:'LOG',btn_clear:'Clear',
+    placeholder_phone:'+1234567890',placeholder_msg:'Your message...',
+    dispatching:'Dispatching %d message(s)...','scheduled_for':'Scheduled for %s',
+    job_started:'Job started — %d contacts queued',error_prefix:'Error: ',
+    server_unreachable:'Server unreachable',sending_to:'Sending to %s...',
+    sent_to:'Sent to %s',failed_at:'Failed %s: %s',
+    done:'Done — %d sent, %d failed',stopped:'Stopped',
+    reset_msg:'Reset — ready',stopped_by_user:'Stopped by user',
+    toast_queued:'%d messages queued',toast_sent:'Sent: %s',
+    toast_failed:'Failed: %s',toast_complete:'Complete: %d sent, %d failed',
+    toast_stopped:'Stopped',toast_reset:'Reset',toast_server:'Server unreachable',
+    empty:'No contacts yet',dispatch_n:'Dispatch (%d)',sending_state:'Sending...',
+    badge_pending:'Pending',badge_sending:'Sending',badge_sent:'Sent',badge_failed:'Failed'
+  }
+};
+let lang=localStorage.getItem('sf_lang')||'ru';
 
-// ── Init ───────────────────────────────────────────────
+function t(key,...args){
+  let s=(I18N[lang]&&I18N[lang][key])||(I18N.en[key])||key;
+  args.forEach((a,i)=>s=s.replace('%'+(i+1),'%d').replace('%d',a));
+  return s;
+}
+function applyLang(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k=el.getAttribute('data-i18n');
+    if(I18N[lang]&&I18N[lang][k])el.textContent=I18N[lang][k];
+  });
+  document.getElementById('lang-label').textContent=lang==='ru'?'EN':'RU';
+  updStats();
+  renderContacts();
+}
+function toggleLang(){lang=lang==='ru'?'en':'ru';localStorage.setItem('sf_lang',lang);applyLang()}
+
+/* ── Theme ─────────────────────────────────────────── */
+let theme=localStorage.getItem('sf_theme')||'dark';
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',theme);
+  document.getElementById('theme-icon-dark').style.display=theme==='dark'?'':'none';
+  document.getElementById('theme-icon-light').style.display=theme==='light'?'':'none';
+}
+function toggleTheme(){theme=theme==='dark'?'light':'dark';localStorage.setItem('sf_theme',theme);applyTheme()}
+applyTheme();
+
+/* ── State ─────────────────────────────────────────── */
+let contacts=[];
+let nid=1;
+let running=false;
+let sendNow=false;
+let poll=null;
+
 addContact();
-updateStats();
+applyLang();
 tickClock();
-setInterval(tickClock, 1000);
+setInterval(tickClock,1000);
 
-// ── Clock ──────────────────────────────────────────────
-function tickClock() {
-  document.getElementById('clock').textContent =
-    new Date().toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+function tickClock(){
+  document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'})
 }
 
-// ── Toggle send-now ────────────────────────────────────
-function toggleSendNow() {
-  if (running) return;
-  sendNow = !sendNow;
-  const track = document.getElementById('toggle-track');
-  const label = document.getElementById('toggle-label');
-  const tg    = document.getElementById('time-group');
-  track.className = 'toggle-track ' + (sendNow ? 'on' : 'off');
-  label.style.color = sendNow ? 'var(--green)' : 'var(--muted)';
-  tg.style.display  = sendNow ? 'none' : 'flex';
+function toggleNow(){
+  if(running)return;
+  sendNow=!sendNow;
+  document.getElementById('t-track').className='toggle-track'+(sendNow?' on':'');
+  document.getElementById('t-label').className='toggle-text'+(sendNow?' on':'');
+  document.getElementById('t-group').style.display=sendNow?'none':'flex';
 }
 
-// ── Contacts ───────────────────────────────────────────
-function addContact() {
-  contacts.push({ id: nextId++, phone: '', message: '', status: 'pending' });
-  renderContacts();
-  updateStats();
+/* ── Contacts ──────────────────────────────────────── */
+function addContact(){
+  contacts.push({id:nid++,phone:'',message:'',status:'pending'});
+  renderContacts();updStats();
 }
-
-function removeContact(id) {
-  if (contacts.length === 1) return;
-  contacts = contacts.filter(c => c.id !== id);
-  renderContacts();
-  updateStats();
+function removeContact(id){
+  if(contacts.length===1)return;
+  contacts=contacts.filter(c=>c.id!==id);
+  renderContacts();updStats();
 }
-
-function renderContacts() {
-  const list = document.getElementById('contacts-list');
-  list.innerHTML = contacts.map((c, i) => `
+function updField(id,f,v){
+  const c=contacts.find(x=>x.id===id);
+  if(c){c[f]=v;updStats()}
+}
+function renderContacts(){
+  const el=document.getElementById('c-list');
+  if(!contacts.length){el.innerHTML=`<div class="empty">${t('empty')}</div>`;return}
+  const ph=t('placeholder_phone'),pm=t('placeholder_msg');
+  el.innerHTML=contacts.map((c,i)=>`
     <div class="contact-row" id="row-${c.id}">
-      <div class="row-index">${String(i+1).padStart(2,'0')}</div>
-      <input type="text"
-        value="${escHtml(c.phone)}"
-        placeholder="+1234567890"
-        ${running ? 'disabled' : ''}
-        oninput="updateField(${c.id},'phone',this.value)"
-      />
-      <input type="text"
-        value="${escHtml(c.message)}"
-        placeholder="Message..."
-        ${running ? 'disabled' : ''}
-        oninput="updateField(${c.id},'message',this.value)"
-      />
-      ${badgeHtml(c.status)}
-      <button class="btn-remove" onclick="removeContact(${c.id})"
-        ${running || contacts.length===1 ? 'disabled' : ''}>✕</button>
-    </div>
-  `).join('');
-  document.getElementById('contacts-title').textContent =
-    `CONTACTS — ${contacts.length} TOTAL`;
+      <div class="contact-idx">${String(i+1).padStart(2,'0')}</div>
+      <input class="inp" type="text" value="${esc(c.phone)}" placeholder="${ph}" ${running?'disabled':''} oninput="updField(${c.id},'phone',this.value)"/>
+      <input class="inp" type="text" value="${esc(c.message)}" placeholder="${pm}" ${running?'disabled':''} oninput="updField(${c.id},'message',this.value)"/>
+      ${badgeHTML(c.status)}
+      <button class="btn-x" onclick="removeContact(${c.id})" ${running||contacts.length===1?'disabled':''}>&times;</button>
+    </div>`).join('');
+  document.getElementById('ct-title').innerHTML=`${t('contacts_title')} — ${contacts.length}`;
+}
+function badgeHTML(s){
+  const m={pending:[t('badge_pending'),'pending'],sending:[t('badge_sending'),'sending'],sent:[t('badge_sent'),'sent'],failed:[t('badge_failed'),'failed']};
+  const[l,cl]=m[s]||m.pending;
+  return `<div class="badge badge-${cl}"><div class="badge-dot"></div>${l}</div>`;
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+
+/* ── Stats ─────────────────────────────────────────── */
+function updStats(){
+  const valid=contacts.filter(c=>c.phone.trim()&&c.message.trim()).length;
+  const sent=contacts.filter(c=>c.status==='sent').length;
+  const fail=contacts.filter(c=>c.status==='failed').length;
+  document.getElementById('s-total').textContent=contacts.length;
+  document.getElementById('s-ready').textContent=valid;
+  document.getElementById('s-sent').textContent=sent;
+  document.getElementById('s-fail').textContent=fail;
+  const btn=document.getElementById('b-dispatch');
+  btn.disabled=running||valid===0;
+  btn.textContent=running?t('sending_state'):t('dispatch_n',valid);
 }
 
-function badgeHtml(status) {
-  const map = {
-    pending: ['PENDING','pending'],
-    sending: ['SENDING','sending'],
-    sent:    ['SENT','sent'],
-    failed:  ['FAILED','failed'],
-  };
-  const [label, cls] = map[status] || map.pending;
-  return `<div class="badge badge-${cls}"><div class="dot"></div>${label}</div>`;
+/* ── Toast ─────────────────────────────────────────── */
+function toast(msg,type='info'){
+  const el=document.getElementById('toast');
+  const d=document.createElement('div');
+  d.className='toast-item '+type;
+  d.textContent=msg;
+  el.appendChild(d);
+  setTimeout(()=>{d.style.opacity='0';d.style.transition='opacity .3s';setTimeout(()=>d.remove(),300)},3000)
 }
 
-function updateField(id, field, value) {
-  const c = contacts.find(x => x.id === id);
-  if (c) c[field] = value;
-  updateStats();
+/* ── Log ───────────────────────────────────────────── */
+function log(msg,cls=''){
+  const el=document.getElementById('log');
+  const ts=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  el.innerHTML+=`<div class="log-${cls}">[${ts}] ${msg}</div>`;
+  el.scrollTop=el.scrollHeight
 }
+function clearLog(){document.getElementById('log').innerHTML=''}
 
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-}
-
-// ── Stats ──────────────────────────────────────────────
-function updateStats() {
-  const valid  = contacts.filter(c => c.phone.trim() && c.message.trim()).length;
-  const sent   = contacts.filter(c => c.status === 'sent').length;
-  const failed = contacts.filter(c => c.status === 'failed').length;
-  document.getElementById('stat-total').textContent  = contacts.length;
-  document.getElementById('stat-ready').textContent  = valid;
-  document.getElementById('stat-sent').textContent   = sent;
-  document.getElementById('stat-failed').textContent = failed;
-
-  const btn = document.getElementById('btn-dispatch');
-  btn.disabled = running || valid === 0;
-  btn.textContent = running ? 'DISPATCHING...' : `▶ DISPATCH ${valid}`;
-}
-
-// ── Log ────────────────────────────────────────────────
-function log(msg, cls='dim') {
-  const el = document.getElementById('log');
-  const ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  el.innerHTML += `<div class="log-line ${cls}">[${ts}] ${msg}</div>`;
-  el.scrollTop = el.scrollHeight;
-}
-function clearLog() { document.getElementById('log').innerHTML = ''; }
-
-// ── Dispatch ───────────────────────────────────────────
-async function dispatch() {
-  const valid = contacts.filter(c => c.phone.trim() && c.message.trim());
-  if (!valid.length) return;
-
-  running = true;
-  updateStats();
-  document.getElementById('btn-stop').style.display  = '';
-  document.getElementById('btn-reset').style.display = 'none';
-
-  // reset statuses
-  contacts.forEach(c => { if (c.phone.trim() && c.message.trim()) c.status = 'pending'; });
+/* ── Dispatch ──────────────────────────────────────── */
+async function dispatch(){
+  const valid=contacts.filter(c=>c.phone.trim()&&c.message.trim());
+  if(!valid.length)return;
+  running=true;
+  updStats();
+  document.getElementById('b-stop').style.display='';
+  document.getElementById('b-reset').style.display='none';
+  contacts.forEach(c=>{if(c.phone.trim()&&c.message.trim())c.status='pending'});
   renderContacts();
-
-  const timeVal = document.getElementById('send-time').value;
-
-  log(`Dispatching ${valid.length} message(s)…`, 'info');
-  if (!sendNow && timeVal) log(`Scheduled for ${timeVal}`, 'info');
-
-  try {
-    const res = await fetch('/dispatch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contacts: valid.map(c => ({ id: c.id, phone: c.phone, message: c.message })),
-        sendNow,
-        time: timeVal,
-      }),
-    });
-    const data = await res.json();
-    if (data.error) { log('Error: ' + data.error, 'err'); running = false; updateStats(); return; }
-    log(`Job started — ${data.total} contacts queued`, 'ok');
-    startPolling();
-  } catch(e) {
-    log('Cannot reach Flask server: ' + e.message, 'err');
-    running = false;
-    updateStats();
+  const tv=document.getElementById('send-time').value;
+  log(t('dispatching',valid.length),'info');
+  if(!sendNow&&tv)log(t('scheduled_for',tv),'info');
+  try{
+    const r=await fetch('/dispatch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contacts:valid.map(c=>({id:c.id,phone:c.phone,message:c.message})),sendNow,time:tv})});
+    const d=await r.json();
+    if(d.error){log(t('error_prefix')+d.error,'err');toast(d.error,'err');running=false;updStats();return}
+    log(t('job_started',d.total),'ok');
+    toast(t('toast_queued',d.total),'ok');
+    startPoll()
+  }catch(e){
+    log(t('server_unreachable')+': '+e.message,'err');
+    toast(t('toast_server'),'err');
+    running=false;updStats()
   }
 }
 
-// ── Polling ────────────────────────────────────────────
-function startPolling() {
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(pollStatus, 1500);
-}
+/* ── Poll ──────────────────────────────────────────── */
+function startPoll(){if(poll)clearInterval(poll);poll=setInterval(pollStatus,1200)}
 
-async function pollStatus() {
-  try {
-    const res  = await fetch('/status');
-    const jobs = await res.json();
-
-    jobs.forEach(job => {
-      const c = contacts.find(x => x.id === job.id);
-      if (!c) return;
-      if (c.status !== job.status) {
-        c.status = job.status;
-        const row = document.getElementById('row-' + c.id);
-        if (row) {
-          row.querySelector('.badge').outerHTML = badgeHtml(job.status);
-          // re-query after replacement
-          const newBadge = row.children[3];
-          // DOM already updated via outerHTML
-        }
-        if (job.status === 'sent')
-          log(`✓ Sent to ${c.phone}`, 'ok');
-        if (job.status === 'failed')
-          log(`✗ Failed ${c.phone}: ${job.error || 'unknown error'}`, 'err');
-        if (job.status === 'sending')
-          log(`→ Sending to ${c.phone}…`, 'info');
-      }
+async function pollStatus(){
+  try{
+    const r=await fetch('/status');
+    const jobs=await r.json();
+    jobs.forEach(j=>{
+      const c=contacts.find(x=>x.id===j.id);
+      if(!c||c.status===j.status)return;
+      c.status=j.status;
+      const row=document.getElementById('row-'+c.id);
+      if(row)row.querySelectorAll('.badge')[0].outerHTML=badgeHTML(j.status);
+      if(j.status==='sending')log(t('sending_to',c.phone),'info');
+      if(j.status==='sent'){log(t('sent_to',c.phone),'ok');toast(t('toast_sent',c.phone),'ok')}
+      if(j.status==='failed'){log(t('failed_at',c.phone,j.error||'unknown'),'err');toast(t('toast_failed',c.phone),'err')}
     });
-
-    const allDone = jobs.length > 0 && jobs.every(j => j.status === 'sent' || j.status === 'failed');
-    if (allDone) {
-      clearInterval(pollTimer);
-      running = false;
-      document.getElementById('btn-stop').style.display  = 'none';
-      document.getElementById('btn-reset').style.display = '';
-      renderContacts();
-      updateStats();
-      const s = jobs.filter(j=>j.status==='sent').length;
-      const f = jobs.filter(j=>j.status==='failed').length;
-      log(`Done — ${s} sent, ${f} failed`, s > 0 ? 'ok' : 'err');
+    if(jobs.length>0&&jobs.every(j=>j.status==='sent'||j.status==='failed')){
+      clearInterval(poll);poll=null;
+      running=false;
+      document.getElementById('b-stop').style.display='none';
+      document.getElementById('b-reset').style.display='';
+      renderContacts();updStats();
+      const s=jobs.filter(j=>j.status==='sent').length;
+      const f=jobs.filter(j=>j.status==='failed').length;
+      log(t('done',s,f),s>0?'ok':'err');
+      toast(t('toast_complete',s,f),s>0?'ok':'err')
     }
-  } catch(e) {
-    log('Poll error: ' + e.message, 'err');
-  }
+  }catch(e){}
 }
 
-// ── Stop / Reset ───────────────────────────────────────
-async function stopDispatch() {
-  clearInterval(pollTimer);
-  running = false;
-  document.getElementById('btn-stop').style.display  = 'none';
-  document.getElementById('btn-reset').style.display = '';
-  log('Stopped by user', 'err');
-  updateStats();
+/* ── Stop / Reset ──────────────────────────────────── */
+async function stopJob(){
+  await fetch('/stop',{method:'POST'});
+  if(poll)clearInterval(poll);poll=null;
+  running=false;
+  document.getElementById('b-stop').style.display='none';
+  document.getElementById('b-reset').style.display='';
+  renderContacts();updStats();
+  log(t('stopped'),'err');toast(t('toast_stopped'),'err')
 }
-
-async function resetAll() {
-  await fetch('/reset', { method: 'POST' });
-  contacts.forEach(c => c.status = 'pending');
-  document.getElementById('btn-reset').style.display = 'none';
-  renderContacts();
-  updateStats();
-  log('Reset — ready for new dispatch', 'info');
+async function resetJob(){
+  await fetch('/reset',{method:'POST'});
+  contacts.forEach(c=>c.status='pending');
+  document.getElementById('b-reset').style.display='none';
+  renderContacts();updStats();
+  log(t('reset_msg'),'info');toast(t('toast_reset'),'info')
 }
 </script>
 </body>
